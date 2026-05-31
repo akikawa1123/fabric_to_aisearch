@@ -237,23 +237,10 @@ python create_data_agent.py
 
 `tvlog_aisearch_agent` が作成されます。
 
-### 6. Portal で AI Search index を Data Agent に接続
+### 6. RBAC と AI Instructions を設定
 
-> AI Search datasource の接続は preview 機能のため、REST API スキーマが未公開です。
-> このステップのみ Portal UI で行います。
-
-[Fabric Portal](https://app.fabric.microsoft.com/) → `tvlog_aisearch_agent` を開き
-**[Data] → [Add AI Search Index]** で以下を設定して **Save**:
-
-| 項目 | 値 |
-|---|---|
-| Resource URL | `https://<your-search-service>.search.windows.net` |
-| Index name | `tvlog-paragraph` |
-| Search Type | Hybrid + Semantic |
-| Semantic configuration | `default` |
-| Top K | `8` |
-
-### 7. RBAC と AI Instructions を設定
+> **Portal で接続する前にこのステップを実行してください。**  
+> AI Search サービスの認証が API キーのみの状態だと、Fabric Portal からの接続が失敗します。
 
 ```bash
 python grant_search_rbac.py   # AAD 認証許可 + 実行ユーザーに Reader ロール付与
@@ -271,6 +258,22 @@ python update_data_agent.py   # AI Instructions / 索引説明を Data Agent に
 >   --role "1407120a-92aa-4202-b7e9-c0e197c71c8f" \
 >   --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Search/searchServices/<name>
 > ```
+
+### 7. Portal で AI Search index を Data Agent に接続
+
+> AI Search datasource の接続は preview 機能のため、REST API スキーマが未公開です。
+> このステップのみ Portal UI で行います。
+
+[Fabric Portal](https://app.fabric.microsoft.com/) → `tvlog_aisearch_agent` を開き
+**[Data] → [Add AI Search Index]** で以下を設定して **Save**:
+
+| 項目 | 値 |
+|---|---|
+| Resource URL | `https://<your-search-service>.search.windows.net` |
+| Index name | `tvlog-paragraph` |
+| Search Type | Hybrid + Semantic |
+| Semantic configuration | `default` |
+| Top K | `8` |
 
 ## ファイル構成
 
