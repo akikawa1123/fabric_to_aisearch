@@ -26,7 +26,7 @@ Microsoft 365 Copilot / Copilot in Fabric / REST API
 | Microsoft Fabric ワークスペース | Lakehouse + Data Agent を作成する場所 |
 | Fabric Lakehouse | Bronze テーブル (`tvlog_dummydata_1000`) 取り込み済み |
 | Azure AI Search | **Basic 以上**のティア (integrated vectorizer + セマンティック検索にはベクトル検索対応が必要) |
-| Azure OpenAI | `text-embedding-3-small` デプロイ済み |
+| Azure OpenAI (Azure AI Foundry) | `text-embedding-3-small` デプロイ済み。[Azure AI Foundry](https://ai.azure.com) から作成・デプロイを推奨 |
 | Azure CLI (`az`) | ローカルに `az login` 済み |
 
 ---
@@ -120,12 +120,67 @@ AI Search サービス作成後、`setup_mi_rbac.py` を実行する前に必ず
 
 ---
 
+## Azure OpenAI (Azure AI Foundry) のデプロイ
+
+> 既に `text-embedding-3-small` がデプロイ済みの場合はスキップしてください。
+
+### Azure AI Foundry でのデプロイ手順 (推奨)
+
+現在は Azure OpenAI リソースの作成・モデルのデプロイは  
+[Azure AI Foundry](https://ai.azure.com) から行うのが標準的な方法です。
+
+1. [Azure AI Foundry](https://ai.azure.com) にアクセスしてサインイン
+2. **[+ プロジェクトを作成する]** → ハブを新規作成 (または既存ハブを選択)
+   - ハブの作成時に Azure OpenAI リソースが自動的にプロビジョニングされます
+3. プロジェクト内の **[モデルカタログ]** → `text-embedding-3-small` を検索 → **[デプロイ]**
+
+   | 項目 | 設定値 |
+   |---|---|
+   | デプロイ名 | `text-embedding-3-small` (任意。`.env` の `AOAI_EMBEDDING_DEPLOYMENT` に合わせる) |
+   | デプロイの種類 | Standard または Global Standard |
+
+4. デプロイ完了後、**[プロジェクトの設定] → [接続済みリソース]** で Azure OpenAI リソースを選択し  
+   以下を控える:
+   - **エンドポイント** (例: `https://YOUR-HUB.openai.azure.com`) → `.env` の `AOAI_ENDPOINT`
+   - リソース名 → `.env` の `AZURE_AOAI_ACCOUNT`
+   - リソースが属するリソースグループ → `.env` の `AZURE_AOAI_RG`
+
+### Azure CLI でのデプロイ
+
+```bash
+# Azure OpenAI リソース作成
+az cognitiveservices account create \
+  --name YOUR-AOAI-NAME \
+  --resource-group YOUR-RG \
+  --location japaneast \
+  --kind OpenAI \
+  --sku S0
+
+# text-embedding-3-small をデプロイ
+az cognitiveservices account deployment create \
+  --name YOUR-AOAI-NAME \
+  --resource-group YOUR-RG \
+  --deployment-name text-embedding-3-small \
+  --model-name text-embedding-3-small \
+  --model-version "1" \
+  --model-format OpenAI \
+  --sku-capacity 100 \
+  --sku-name Standard
+```
+
+> **リージョンに関する注意**  
+> `text-embedding-3-small` が利用可能なリージョンは限られています。  
+> 詳細は [Azure OpenAI モデルの可用性](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) を確認してください。  
+> また、AI Search の integrated vectorizer は **AI Search と同じリージョン** の AOAI エンドポイントを参照することを推奨します (レイテンシ・コスト低減)。
+
+---
+
 ## セットアップ
 
 ### 1. リポジトリをクローン・依存インストール
 
 ```bash
-git clone https://github.com/<your-org>/fabric-to-aisearch.git
+git clone https://github.com/akikawa1123/fabric-to-aisearch.git
 cd fabric-to-aisearch
 pip install -r requirements.txt
 ```
