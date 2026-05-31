@@ -124,26 +124,33 @@ AI Search サービス作成後、`setup_mi_rbac.py` を実行する前に必ず
 
 > 既に `text-embedding-3-small` がデプロイ済みの場合はスキップしてください。
 
-### Azure AI Foundry でのデプロイ手順 (推奨)
+### Azure Portal でのデプロイ手順 (推奨)
 
-現在は Azure OpenAI リソースの作成・モデルのデプロイは  
-[Azure AI Foundry](https://ai.azure.com) から行うのが標準的な方法です。
+#### 1. Azure OpenAI リソースを作成する
 
-1. [Azure AI Foundry](https://ai.azure.com) にアクセスしてサインイン
-2. **[+ プロジェクトを作成する]** → ハブを新規作成 (または既存ハブを選択)
-   - ハブの作成時に Azure OpenAI リソースが自動的にプロビジョニングされます
-3. プロジェクト内の **[モデルカタログ]** → `text-embedding-3-small` を検索 → **[デプロイ]**
+1. [Azure Portal](https://portal.azure.com) にサインインし、**[リソースの作成]** → `Azure OpenAI` を検索
+2. 以下を設定してリソースを作成する:
+
+   | 項目 | 設定値 |
+   |---|---|
+   | リソース グループ | AI Search と同じグループを推奨 |
+   | リージョン | AI Search と同じリージョンを推奨 (例: `Japan East`) |
+   | 名前 | 任意 (`.env` の `AZURE_AOAI_ACCOUNT` に設定) |
+   | 価格レベル | Standard S0 |
+
+3. リソース作成後、**[キーとエンドポイント]** で **エンドポイント URL** を控える → `.env` の `AOAI_ENDPOINT`
+
+#### 2. text-embedding-3-small をデプロイする
+
+1. 作成した Azure OpenAI リソースの画面から **[Azure AI Foundry portal を起動する]** をクリック
+   - または [ai.azure.com](https://ai.azure.com) にアクセスし、対応するプロジェクトを開く
+2. 左メニューの **[モデルとエンドポイント]** → **[モデル デプロイの追加]**
+3. `text-embedding-3-small` を検索して選択 → **[デプロイ]**
 
    | 項目 | 設定値 |
    |---|---|
    | デプロイ名 | `text-embedding-3-small` (任意。`.env` の `AOAI_EMBEDDING_DEPLOYMENT` に合わせる) |
    | デプロイの種類 | Standard または Global Standard |
-
-4. デプロイ完了後、**[プロジェクトの設定] → [接続済みリソース]** で Azure OpenAI リソースを選択し  
-   以下を控える:
-   - **エンドポイント** (例: `https://YOUR-HUB.openai.azure.com`) → `.env` の `AOAI_ENDPOINT`
-   - リソース名 → `.env` の `AZURE_AOAI_ACCOUNT`
-   - リソースが属するリソースグループ → `.env` の `AZURE_AOAI_RG`
 
 ### Azure CLI でのデプロイ
 
