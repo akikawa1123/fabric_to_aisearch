@@ -40,10 +40,31 @@ AI_INSTRUCTIONS = """\
 6. 個人のプライバシーに踏み込むコメントや、政治・宗教の評価はしないでください。事実の引用に留めます。
 7. 質問が放送内容と無関係な場合は丁重に対象外であることを伝えてください。
 
+# インデックスのフィールド
+- para_id          : 段落の一意 ID (キー)
+- broadcast_date   : 放送日 (YYYY-MM-DD 形式)。filterable / facetable
+- station_code     : 放送局コード。filterable / facetable
+- program_name     : 番組名。全文検索可 / filterable
+- corner_name      : コーナー名。全文検索可 / filterable
+- topic_name       : トピック名。全文検索可 / filterable
+- topic_category   : トピックカテゴリ。filterable / facetable
+- topic_person     : 登場人物名 Collection(String)。filterable / facetable
+                     ※ OData any() フィルタで完全一致検索が可能
+- persons_text     : topic_person を空白区切りで連結したテキスト (セマンティック検索用)
+- paragraph_text   : 本文テキスト (ja.microsoft アナライザー)
+- paragraph_vector : 本文の embedding ベクトル (1536 次元)
+
+# 人物名での検索について
+- 人物名検索は OData $filter を使って正確に検索してください。
+  例: $filter=topic_person/any(p: p eq '山田太郎')
+- 複数人物の場合は or で繋ぎます:
+  例: $filter=topic_person/any(p: p eq '山田太郎') or topic_person/any(p: p eq '鈴木花子')
+- persons_text フィールドへのテキスト検索でも人物名クエリに対応できます (セマンティックランキング改善済み)。
+
 # よくある質問パターン
 - 「〇〇 について話していた番組は?」→ トピックキーワードで検索し上位 3〜5 件を引用
 - 「△月△日の □□（局名 or 番組名）で何があった?」→ 日付 + 局名/番組名でフィルタ
-- 「☆☆（人物）が出演していた番組」→ 人物名で検索
+- 「☆☆（人物）が出演していた番組」→ topic_person/any(p: p eq '☆☆') でフィルタ
 - 「災害／事件のニュース報道」→ 事象名 + 「ニュース」「速報」等のキーワード併用
 
 # 回答スタイル
@@ -60,9 +81,14 @@ SEARCH_DESCRIPTION = (
     "テレビ放送（NHK 総合 / NHK E / 日テレ / テレビ朝日 / TBS / テレビ東京 / フジテレビなど）の"
     "書き起こしを段落（paragraph）単位でハイブリッド + セマンティック検索する。"
     "フィールド: para_id(キー), broadcast_date(放送日 YYYY-MM-DD), station_code(局コード), "
-    "program_name(番組名), corner_name(コーナー), topic_name(トピック), "
-    "topic_category(カテゴリ), topic_person(出演者), paragraph_text(本文)。"
+    "program_name(番組名), corner_name(コーナー名), topic_name(トピック名), "
+    "topic_category(カテゴリ), "
+    "topic_person(登場人物名リスト Collection(String) - OData any() フィルタで人物名完全一致検索可能。"
+    "例: $filter=topic_person/any(p: p eq '人物名')), "
+    "persons_text(人物名連結テキスト・セマンティック検索用), "
+    "paragraph_text(本文テキスト), paragraph_vector(embedding ベクトル)。"
     "番組内容・出演者・トピック・特定日付の放送内容に関する質問はこのデータソースを使うこと。"
+    "人物名で検索する場合は topic_person フィールドに OData any() フィルタを使うこと。"
 )
 SEARCH_TOPK = 8
 

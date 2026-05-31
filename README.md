@@ -1,4 +1,4 @@
-# fabric-to-aisearch
+﻿# fabric-to-aisearch
 
 Fabric Lakehouse の Bronze テーブルを Azure AI Search にベクトル index として push し、
 Fabric Data Agent から自然言語で問い合わせるシナリオのリファレンス実装です。
@@ -24,10 +24,93 @@ Microsoft 365 Copilot / Copilot in Fabric / REST API
 | リソース | 説明 |
 |---|---|
 | Microsoft Fabric ワークスペース | Lakehouse + Data Agent を作成する場所 |
-| Fabric Lakehouse | Bronze テーブル (`tvlog_sample_1000`) 取り込み済み |
-| Azure AI Search | Basic 以上のティア (integrated vectorizer にはベクトル検索が必要) |
+| Fabric Lakehouse | Bronze テーブル (`tvlog_dummydata_1000`) 取り込み済み |
+| Azure AI Search | **Basic 以上**のティア (integrated vectorizer + セマンティック検索にはベクトル検索対応が必要) |
 | Azure OpenAI | `text-embedding-3-small` デプロイ済み |
 | Azure CLI (`az`) | ローカルに `az login` 済み |
+
+---
+
+## Azure AI Search のデプロイ
+
+> 既に AI Search リソースが作成済みの場合はこのセクションをスキップしてください。
+
+### ティア選択
+
+| ティア | ベクトル検索 | セマンティック | 推奨用途 |
+|---|:---:|:---:|---|
+| Free | ✗ | ✗ | 動作確認不可 (ベクトル非対応) |
+| **Basic** | ✓ | ✓ | 開発・PoC 用途 (最小構成) |
+| Standard S1 | ✓ | ✓ | 本番・大規模インデックス |
+| Standard S2/S3 | ✓ | ✓ | 高スループット要件 |
+
+integrated vectorizer と Semantic Ranker は **Basic 以上**が必要です。
+
+### Azure Portal で作成する場合
+
+1. [Azure Portal](https://portal.azure.com) → **[リソースの作成]** → `Azure AI Search` を検索
+2. **[作成]** をクリックし以下を入力:
+
+   | 項目 | 設定値 |
+   |---|---|
+   | サブスクリプション | 使用するサブスクリプション |
+   | リソース グループ | Fabric/AOAI と同じグループを推奨 |
+   | サービス名 | 任意 (例: `myproject-search`) |
+   | 場所 | AOAI と同じリージョンを推奨 (ネットワーク遅延・通信コスト低減) |
+   | 価格レベル | **Basic** 以上 |
+
+3. **[確認および作成]** → **[作成]**
+
+4. デプロイ完了後、リソースの **[概要]** ページで以下を控える:
+   - **URL** (例: `https://myproject-search.search.windows.net`) → `.env` の `AZURE_SEARCH_ENDPOINT`
+   - **[キー]** → **[管理者キー]** のプライマリキー → `.env` の `AZURE_SEARCH_ADMIN_KEY`
+
+5. **[設定] → [ID]** を開き、**システム割り当てマネージド ID** を **オン** にして保存する  
+   (integrated vectorizer が AOAI を呼ぶために必要)
+
+6. **[設定] → [セマンティック検索]** を開き、**Free** または有料プランを有効にする  
+   (Semantic Ranker を使うために必要)
+
+### Azure CLI で作成する場合
+
+```bash
+# 変数を設定
+SEARCH_NAME="myproject-search"
+RESOURCE_GROUP="myproject-rg"
+LOCATION="japaneast"   # AOAI と同じリージョンを推奨
+
+# AI Search サービス作成
+az search service create \
+  --name $SEARCH_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location $LOCATION \
+  --sku Basic \
+  --identity-type SystemAssigned
+
+# admin key を取得
+az search admin-key show \
+  --service-name $SEARCH_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --query primaryKey -o tsv
+
+# セマンティック検索を有効化 (Free プラン)
+az search service update \
+  --name $SEARCH_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --semantic-search free
+```
+
+> **セマンティック検索の有効化について**  
+> `az search service update --semantic-search free` で Free プランが設定できます。  
+> Free プランは月 1,000 クエリまで無料。それ以上の場合は `standard` を指定してください。
+
+### setup_mi_rbac.py との関係
+
+`setup_mi_rbac.py` は AI Search の **Managed Identity** (上記手順 5 で有効化) が  
+AOAI の Embedding API を呼べるよう `Cognitive Services User` ロールを付与します。  
+AI Search サービス作成後、`setup_mi_rbac.py` を実行する前に必ず MI を有効にしてください。
+
+---
 
 ## セットアップ
 
@@ -151,5 +234,41 @@ python update_data_agent.py   # AI Instructions / 索引説明を Data Agent に
 | `corner_name` | string | コーナー名 |
 | `topic_name` | string | トピック名 |
 | `topic_category` | string | トピックカテゴリ |
-| `topic_person` | string | 関連人物 |
+| `topic_person` | string | 関連人物 (**バックスラッシュ `\` 区切り**で複数人物が入る場合あり。例: `"山田太郎\鈴木花子"`) |
 | `paragraph` | string | 書き起こし本文 (段落) |
+
+## AI Search インデックス スキーマ (`tvlog-paragraph`)
+
+`push_to_aisearch.ipynb` が作成するインデックスのフィールド定義です。
+
+| フィールド | 型 | アナライザー | セマンティック | 説明 |
+|---|---|---|---|---|
+| `para_id` | `String` (key) | — | — | 段落の一意 ID。filterable |
+| `broadcast_date` | `String` | — | — | 放送日 (YYYY-MM-DD)。filterable / facetable |
+| `station_code` | `String` | — | — | 放送局コード。filterable / facetable |
+| `program_name` | `String` | standard | **title** | 番組名。全文検索可 / filterable |
+| `corner_name` | `String` | standard | keywords | コーナー名。全文検索可 / filterable |
+| `topic_name` | `String` | standard | keywords | トピック名。全文検索可 / filterable |
+| `topic_category` | `String` | standard | keywords | トピックカテゴリ。filterable / facetable |
+| `topic_person` | `Collection(String)` | **ja.microsoft** | — | 人物名リスト。Bronze の `\` 区切りをリストに変換して格納。OData `any()` フィルタ・facet 対応 |
+| `persons_text` | `String` | **ja.microsoft** | **keywords** | `topic_person` を空白区切りで連結した文字列。セマンティックランカーが人物名クエリを正しくスコアリングするために追加 |
+| `paragraph_text` | `String` | **ja.microsoft** | **content** | 書き起こし本文 |
+| `paragraph_vector` | `Collection(Single)` | — | — | `paragraph_text` の embedding (1536 次元, HNSW) |
+
+### 人物名フィルタ検索
+
+`topic_person` は `Collection(String)` 型のため、**OData `any()` 構文**で完全一致フィルタができます:
+
+```python
+# 特定の人物が出演している段落を取得
+results = search_client.search(
+    search_text="*",
+    filter="topic_person/any(p: p eq '山田太郎')",
+    select=["para_id", "broadcast_date", "program_name", "topic_person", "paragraph_text"],
+)
+```
+
+> **なぜ `persons_text` が必要か**  
+> `Collection(String)` 型のフィールドはセマンティック検索の `keywords` に指定できません。  
+> そのため `persons_text`（String 型・空白区切り連結）を別途用意し、セマンティックランカーが  
+> 人物名クエリに対して正しくスコアリングできるようにしています。
