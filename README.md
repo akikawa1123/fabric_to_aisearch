@@ -237,14 +237,13 @@ python create_data_agent.py
 
 `tvlog_aisearch_agent` が作成されます。
 
-### 6. RBAC と AI Instructions を設定
+### 6. RBAC を設定
 
 > **Portal で接続する前にこのステップを実行してください。**  
 > AI Search サービスの認証が API キーのみの状態だと、Fabric Portal からの接続が失敗します。
 
 ```bash
 python grant_search_rbac.py   # AAD 認証許可 + 実行ユーザーに Reader ロール付与
-python update_data_agent.py   # AI Instructions / 索引説明を Data Agent に書き込み
 ```
 
 `grant_search_rbac.py` の効果:
@@ -274,6 +273,15 @@ python update_data_agent.py   # AI Instructions / 索引説明を Data Agent に
 | Search Type | Hybrid + Semantic |
 | Semantic configuration | `default` |
 | Top K | `8` |
+
+### 8. AI Instructions を設定
+
+> Portal で AI Search index を接続した後に実行してください。  
+> `azureAISearchConfigs` が空の状態で実行するとエラーになります。
+
+```bash
+python update_data_agent.py   # AI Instructions / 索引説明を Data Agent に書き込み
+```
 
 ## ファイル構成
 
