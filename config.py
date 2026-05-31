@@ -32,6 +32,7 @@ LAKEHOUSE_NAME = _require("FABRIC_LAKEHOUSE_NAME")
 # ─── Azure AI Search ────────────────────────────────────────
 AZURE_SEARCH_ENDPOINT   = _require("AZURE_SEARCH_ENDPOINT")
 AZURE_SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "tvlog-paragraph")
+AZURE_SEARCH_ADMIN_KEY  = _require("AZURE_SEARCH_ADMIN_KEY")
 
 # ─── Azure OpenAI ────────────────────────────────────────────
 AOAI_ENDPOINT             = _require("AOAI_ENDPOINT")

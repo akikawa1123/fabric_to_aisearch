@@ -37,14 +37,19 @@ Microsoft 365 Copilot / Copilot in Fabric / REST API
 
 ### ティア選択
 
-| ティア | ベクトル検索 | セマンティック | 推奨用途 |
+| ティア (SKU) | ベクトル検索 | Semantic Ranker 利用可否 | 推奨用途 |
 |---|:---:|:---:|---|
 | Free | ✗ | ✗ | 動作確認不可 (ベクトル非対応) |
 | **Basic** | ✓ | ✓ | 開発・PoC 用途 (最小構成) |
 | Standard S1 | ✓ | ✓ | 本番・大規模インデックス |
 | Standard S2/S3 | ✓ | ✓ | 高スループット要件 |
 
-integrated vectorizer と Semantic Ranker は **Basic 以上**が必要です。
+integrated vectorizer と Semantic Ranker は **Basic 以上の SKU** が必要です。
+
+> **「Semantic Ranker の課金プラン」と「サービス SKU の Free」は別物です**  
+> Semantic Ranker には独自の課金プランがあり、`--semantic-search free`（月 1,000 クエリ無料）と  
+> `--semantic-search standard`（従量課金）の 2 種類があります。  
+> これはサービス SKU の「Free ティア」とは無関係です。Basic 以上の SKU であれば、どちらの課金プランでも Semantic Ranker が利用できます。
 
 ### Azure Portal で作成する場合
 
@@ -68,8 +73,8 @@ integrated vectorizer と Semantic Ranker は **Basic 以上**が必要です。
 5. **[設定] → [ID]** を開き、**システム割り当てマネージド ID** を **オン** にして保存する  
    (integrated vectorizer が AOAI を呼ぶために必要)
 
-6. **[設定] → [セマンティック検索]** を開き、**Free** または有料プランを有効にする  
-   (Semantic Ranker を使うために必要)
+6. **[設定] → [セマンティック検索]** を開き、**「Free (月 1,000 クエリ無料)」** または **「Standard (従量課金)」** を有効にする  
+   (Semantic Ranker を使うために必要。サービス SKU の「Free ティア」とは別の設定です)
 
 ### Azure CLI で作成する場合
 
@@ -93,16 +98,19 @@ az search admin-key show \
   --resource-group $RESOURCE_GROUP \
   --query primaryKey -o tsv
 
-# セマンティック検索を有効化 (Free プラン)
+# Semantic Ranker を有効化 (無料枠プラン: 月 1,000 クエリまで無料)
+# ※ ここの「free」はサービス SKU の Free ティアではなく、Semantic Ranker 機能の課金プラン名
 az search service update \
   --name $SEARCH_NAME \
   --resource-group $RESOURCE_GROUP \
   --semantic-search free
 ```
 
-> **セマンティック検索の有効化について**  
-> `az search service update --semantic-search free` で Free プランが設定できます。  
-> Free プランは月 1,000 クエリまで無料。それ以上の場合は `standard` を指定してください。
+> **`--semantic-search` の値について**  
+> `free` と `standard` は Semantic Ranker 機能自体の**課金プラン名**です。サービス SKU（Basic/Standard など）とは独立した設定です。  
+> - `free` — 月 1,000 クエリまで無料。開発・PoC 用途に適しています。  
+> - `standard` — 従量課金。本番環境など大量クエリが予想される場合に使用します。  
+> どちらのプランでも、サービス SKU が **Basic 以上**であれば利用できます。
 
 ### setup_mi_rbac.py との関係
 
