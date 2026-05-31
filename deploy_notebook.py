@@ -72,7 +72,7 @@ def resolve_ids(headers: dict) -> tuple[str, str]:
 
 
 def build_payload(ws_id: str, lh_id: str) -> str:
-    with open(NOTEBOOK_PATH, "r", encoding="utf-8") as f:
+    with open(NOTEBOOK_PATH, "r", encoding="utf-8-sig") as f:
         nb = json.load(f)
     nb.setdefault("metadata", {})
     nb["metadata"]["dependencies"] = {
